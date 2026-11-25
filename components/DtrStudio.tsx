@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CustomRowsForm } from "./CustomRowsForm";
+import { DateRangeField, type DateRange } from "./DateRangeField";
 import { applyRows, fillDays } from "@/lib/dtr/fill";
 import { TIME_FIELDS, type CustomRow, type DayRow, type Period, type TimeField } from "@/lib/dtr/types";
-import { downloadIssues, type FieldName } from "@/lib/dtr/validate";
+import { downloadIssues } from "@/lib/dtr/validate";
 import { daysInMonth, periodFromParts } from "@/lib/period";
 
 type Payload = {
@@ -17,8 +18,12 @@ type Payload = {
 
 const DEFAULT_HEAD_OFFICER = "SIMON, AHMED GENESIS F.";
 const HEAD_OFFICER_KEY = "dtr.headOfficer";
-
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const TIME_LABELS: Record<TimeField, string> = {
+  amIn: "A.M. arrival",
+  amOut: "A.M. departure",
+  pmIn: "P.M. arrival",
+  pmOut: "P.M. departure",
+};
 
 function startingPeriod(): Period {
   const now = new Date();
@@ -30,10 +35,6 @@ function startingPeriod(): Period {
 
 function blankDraft(period: Period): Payload {
   return { name: "", period, recognized: [], days: fillDays([], period), rows: [] };
-}
-
-function numberOrBlank(value: number) {
-  return Number.isFinite(value) ? value : "";
 }
 
 export function DtrStudio() {
@@ -56,8 +57,6 @@ export function DtrStudio() {
 
   const issues = useMemo(() => downloadIssues(data.name, data.period), [data.name, data.period]);
   const blocked = issues[0]?.message ?? "";
-  const invalid = (field: FieldName) => issues.some((issue) => issue.field === field && field !== "name");
-  const periodReady = downloadIssues("Name", data.period).length === 0;
 
   async function onFile(next: File) {
     setReading(true);
@@ -75,17 +74,13 @@ export function DtrStudio() {
     setData({ name: json.name, period: json.period, recognized: json.recognized, days: json.days, rows: [] });
   }
 
-  function updatePeriod(patch: Partial<Period>) {
-    const next = { ...data.period, ...patch };
-    const monthKnown = Number.isInteger(next.month) && next.month >= 1 && next.month <= 12;
-    const yearKnown = Number.isInteger(next.year) && next.year >= 1990 && next.year <= 2100;
-    if ((patch.month != null || patch.year != null) && monthKnown && yearKnown) {
-      const last = daysInMonth(next.year, next.month);
-      if (Number.isInteger(next.endDay) && next.endDay > last) next.endDay = last;
-      if (Number.isInteger(next.startDay) && Number.isInteger(next.endDay) && next.startDay > next.endDay) next.startDay = 1;
-    }
-    if (downloadIssues("Name", next).length > 0) {
-      setData({ ...data, period: next });
+  function updatePeriod(next: DateRange) {
+    if (
+      next.month === data.period.month &&
+      next.year === data.period.year &&
+      next.startDay === data.period.startDay &&
+      next.endDay === data.period.endDay
+    ) {
       return;
     }
     const period = periodFromParts(next.month, next.year, next.startDay, next.endDay);
@@ -136,7 +131,7 @@ export function DtrStudio() {
   return (
     <main className="studio">
       <h1 className="page-title">Daily Time Record</h1>
-      <p className="lede">Enter a name, month, cutoff, and year. The PDF can be a new form, or the file you upload.</p>
+      <p className="lede">Enter a name and the days this record covers. The PDF can be a new form, or the file you upload.</p>
 
       <div className="upload-line">
         <label className="ghost file-btn">
@@ -170,31 +165,17 @@ export function DtrStudio() {
               <span className="req">Name</span>
               <input autoFocus autoComplete="name" value={data.name} onChange={(event) => setData({ ...data, name: event.target.value })} />
             </label>
-            <div className="period-fields">
-              <label className="field">
-                <span className="req">Month</span>
-                <select value={data.period.month} onChange={(event) => updatePeriod({ month: Number(event.target.value) })}>
-                  {MONTHS.map((month, index) => (
-                    <option key={month} value={index + 1}>
-                      {month}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={invalid("year") ? "field invalid" : "field"}>
-                <span className="req">Year</span>
-                <input type="number" inputMode="numeric" min={1990} max={2100} value={numberOrBlank(data.period.year)} onChange={(event) => updatePeriod({ year: event.target.value === "" ? Number.NaN : Number(event.target.value) })} />
-              </label>
-              <label className={invalid("from") ? "field invalid" : "field"}>
-                <span>From</span>
-                <input type="number" inputMode="numeric" min={1} max={31} value={numberOrBlank(data.period.startDay)} onChange={(event) => updatePeriod({ startDay: event.target.value === "" ? Number.NaN : Number(event.target.value) })} />
-              </label>
-              <label className={invalid("cutoff") ? "field invalid" : "field"}>
-                <span className="req">Cutoff</span>
-                <input type="number" inputMode="numeric" min={1} max={31} value={numberOrBlank(data.period.endDay)} onChange={(event) => updatePeriod({ endDay: event.target.value === "" ? Number.NaN : Number(event.target.value) })} />
-              </label>
-            </div>
-            {periodReady ? <p className="period-line">{data.period.label}</p> : null}
+            <DateRangeField
+              className="period-range"
+              label="Period"
+              required
+              navigateMonths
+              year={data.period.year}
+              month={data.period.month}
+              startDay={data.period.startDay}
+              endDay={data.period.endDay}
+              onChange={updatePeriod}
+            />
           </div>
 
           <div>
@@ -220,7 +201,7 @@ export function DtrStudio() {
           <h2>Daily times</h2>
           <p className="note">Arrivals fall between 6:00 and 8:00 a.m., and each weekday covers at least eight hours. You can edit any open cell.</p>
           <div className="grid-wrap">
-            <table>
+            <table className="times">
               <thead>
                 <tr>
                   <th>Day</th>
@@ -237,14 +218,17 @@ export function DtrStudio() {
                   const added = imported && !outside && TIME_FIELDS.some((field) => !original?.[field] && day[field] && !original?.keep.includes(field));
                   return (
                     <tr key={day.day} className={outside ? "outside" : added || (imported && day.label && !original?.label) ? "proposed" : ""}>
-                      <td>{day.day}</td>
+                      <td className="day-cell">
+                        <span className="day-word">Day</span>
+                        {day.day}
+                      </td>
                       {day.label ? (
-                        <td colSpan={4}>
+                        <td className="span-cell" colSpan={4} data-label="Label">
                           <input aria-label={`Day ${day.day} label`} value={day.label} disabled={outside} onChange={(event) => updateDay(day.day, "label", event.target.value)} />
                         </td>
                       ) : (
                         TIME_FIELDS.map((field) => (
-                          <td key={field}>
+                          <td key={field} data-label={TIME_LABELS[field]}>
                             <input
                               aria-label={`Day ${day.day} ${field}`}
                               value={day[field]}

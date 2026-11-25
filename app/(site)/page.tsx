@@ -13,7 +13,7 @@ export default function HomePage() {
       <section className="choices">
         <Link className="choice" href="/dtr">
           <strong>Daily Time Record</strong>
-          <span>Enter a name, month, cutoff, and year. Weekdays fill through the cutoff. A printed form is optional.</span>
+          <span>Enter a name and the days to cover. Weekdays fill in for that range. A printed form is optional.</span>
         </Link>
         <Link className="choice" href="/ar">
           <strong>Accomplishment Report</strong>

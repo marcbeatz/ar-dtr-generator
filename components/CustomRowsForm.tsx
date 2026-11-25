@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DateRangeField } from "./DateRangeField";
 import { holidaysFor } from "@/lib/holidays";
 import type { CustomRow, Period } from "@/lib/dtr/types";
 
@@ -47,21 +48,26 @@ export function CustomRowsForm({ period, rows, onChange }: Props) {
       <h2>Holidays and labels</h2>
       <p className="note">Optional. A label replaces the times on those days and prints across the row.</p>
       <form
-        className="row"
+        className="label-form"
         onSubmit={(event) => {
           event.preventDefault();
           add({ from: start, to: end, label });
           setLabel("");
         }}
       >
-        <label className="field narrow">
-          <span>From day</span>
-          <input type="number" min={period.startDay} max={Math.min(period.endDay, 31)} value={from} onChange={(event) => setFrom(Number(event.target.value))} />
-        </label>
-        <label className="field narrow">
-          <span>To day</span>
-          <input type="number" min={period.startDay} max={Math.min(period.endDay, 31)} value={to} onChange={(event) => setTo(Number(event.target.value))} />
-        </label>
+        <DateRangeField
+          label="Days"
+          year={period.year}
+          month={period.month}
+          startDay={from}
+          endDay={to}
+          minDay={period.startDay}
+          maxDay={Math.min(period.endDay, 31)}
+          onChange={({ startDay, endDay }) => {
+            setFrom(startDay);
+            setTo(endDay);
+          }}
+        />
         <label className="field">
           <span>Text on the row</span>
           <input list="holiday-names" placeholder="Bonifacio Day, Official business, P.N. 1447..." value={label} onChange={(event) => setLabel(event.target.value)} />
@@ -87,33 +93,34 @@ export function CustomRowsForm({ period, rows, onChange }: Props) {
         </div>
       ) : null}
       {rows.length ? (
-        <table className="custom-list">
-          <thead>
-            <tr><th>From</th><th>To</th><th>Text</th><th /></tr>
-          </thead>
-          <tbody>
-            {rows.map((row, index) => {
-              const outside = row.to < period.startDay || row.from > period.endDay;
-              return (
-                <tr key={index} className={outside ? "outside" : ""}>
-                  <td>
-                    <input aria-label="From day" type="number" min={1} max={31} value={row.from} onChange={(event) => update(index, { from: Number(event.target.value), to: Math.max(row.to, Number(event.target.value)) })} />
-                  </td>
-                  <td>
-                    <input aria-label="To day" type="number" min={1} max={31} value={row.to} onChange={(event) => update(index, { to: Math.max(row.from, Number(event.target.value)) })} />
-                  </td>
-                  <td>
-                    <input aria-label="Row text" value={row.label} onChange={(event) => update(index, { label: event.target.value })} />
-                    {outside ? <small>Outside the cutoff, not printed.</small> : null}
-                  </td>
-                  <td>
-                    <button className="ghost" type="button" onClick={() => onChange(rows.filter((_, at) => at !== index))}>Remove</button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <ul className="custom-list">
+          {rows.map((row, index) => {
+            const outside = row.to < period.startDay || row.from > period.endDay;
+            return (
+              <li key={`${row.from}-${row.to}-${index}`} className={outside ? "outside" : ""}>
+                <DateRangeField
+                  compact
+                  label="Days"
+                  year={period.year}
+                  month={period.month}
+                  startDay={row.from}
+                  endDay={row.to}
+                  minDay={period.startDay}
+                  maxDay={Math.min(period.endDay, 31)}
+                  onChange={({ startDay, endDay }) => update(index, { from: startDay, to: endDay })}
+                />
+                <label className="field">
+                  <span>Text</span>
+                  <input aria-label="Row text" value={row.label} onChange={(event) => update(index, { label: event.target.value })} />
+                  {outside ? <small>Outside the cutoff, not printed.</small> : null}
+                </label>
+                <button className="ghost" type="button" onClick={() => onChange(rows.filter((_, at) => at !== index))}>
+                  Remove
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       ) : null}
     </div>
   );
