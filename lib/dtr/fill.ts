@@ -157,11 +157,11 @@ export function fillDays(recognized: DayRow[], period: Period): DayRow[] {
     if (!hasTime) {
       const dow = weekday(period.year, period.month, day);
       if (dow === 6) {
-        days.push({ ...emptyDay(day), label: "Saturday" });
+        days.push({ ...emptyDay(day), label: "Saturday", wfh: row.wfh });
         continue;
       }
       if (dow === 0) {
-        days.push({ ...emptyDay(day), label: "Sunday" });
+        days.push({ ...emptyDay(day), label: "Sunday", wfh: row.wfh });
         continue;
       }
     }
@@ -190,7 +190,7 @@ export function applyRows(days: DayRow[], base: DayRow[], period: Period, previo
   const original = new Map(base.map((day) => [day.day, day]));
   return days.map((row) => {
     const label = labelFor(next, row.day, period);
-    if (label) return row.label === label ? row : { ...emptyDay(row.day), label };
+    if (label) return row.label === label ? row : { ...emptyDay(row.day), label, wfh: row.wfh };
     if (labelFor(previous, row.day, period)) return original.get(row.day) ?? row;
     return row;
   });

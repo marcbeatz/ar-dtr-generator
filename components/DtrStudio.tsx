@@ -84,13 +84,18 @@ export function DtrStudio() {
       return;
     }
     const period = periodFromParts(next.month, next.year, next.startDay, next.endDay);
-    const base = fillDays(data.recognized, period);
+    const base = keepWfh(fillDays(data.recognized, period));
     setData({ ...data, period, days: applyRows(base, base, period, [], data.rows) });
   }
 
   function updateRows(rows: CustomRow[]) {
-    const base = fillDays(data.recognized, data.period);
+    const base = keepWfh(fillDays(data.recognized, data.period));
     setData({ ...data, rows, days: applyRows(data.days, base, data.period, data.rows, rows) });
+  }
+
+  function keepWfh(next: DayRow[]) {
+    const current = new Map(data.days.map((day) => [day.day, day.wfh]));
+    return next.map((day) => (current.has(day.day) ? { ...day, wfh: current.get(day.day)! } : day));
   }
 
   function updateDay(day: number, field: TimeField | "label", value: string) {
@@ -199,7 +204,7 @@ export function DtrStudio() {
 
         <div className="section">
           <h2>Daily times</h2>
-          <p className="note">Arrivals fall between 6:00 and 8:00 a.m., and each weekday covers at least eight hours. You can edit any open cell.</p>
+          <p className="note">Arrivals fall between 6:00 and 8:00 a.m., and each weekday covers at least eight hours. You can edit any open cell. WFH is optional and prints beside that day on both copies. An upload turns it on for the days already marked.</p>
           <div className="grid-wrap">
             <table className="times">
               <thead>
@@ -209,6 +214,7 @@ export function DtrStudio() {
                   <th>A.M. departure</th>
                   <th>P.M. arrival</th>
                   <th>P.M. departure</th>
+                  <th>WFH</th>
                 </tr>
               </thead>
               <tbody>
@@ -239,6 +245,19 @@ export function DtrStudio() {
                           </td>
                         ))
                       )}
+                      <td className="wfh-cell" data-label="Work from home">
+                        <input
+                          type="checkbox"
+                          aria-label={`Day ${day.day} work from home`}
+                          checked={day.wfh}
+                          onChange={(event) =>
+                            setData({
+                              ...data,
+                              days: data.days.map((row) => (row.day === day.day ? { ...row, wfh: event.target.checked } : row)),
+                            })
+                          }
+                        />
+                      </td>
                     </tr>
                   );
                 })}

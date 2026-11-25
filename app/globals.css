@@ -194,6 +194,8 @@ h1.page-title { font-family: "Iowan Old Style", Palatino, Georgia, serif; font-w
 .officer { display: flex; gap: 10px; align-items: end; }
 .officer .ghost { height: 42px; }
 .hint { margin: 8px 0 0; color: var(--muted); font-size: 0.88rem; line-height: 1.4; }
+.wfh-cell { width: 64px; text-align: center; }
+.wfh-cell input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; margin: 0; padding: 0; border: 0; accent-color: var(--blue); vertical-align: middle; }
 .sheet .custom-rows { border-top: 0; margin-top: 0; padding-top: 0; }
 .sheet .custom-rows h2 { font-family: "Avenir Next", "Segoe UI", sans-serif; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
 .sheet .custom-rows .note { margin-bottom: 12px; }
@@ -277,7 +279,8 @@ h1.page-title { font-family: "Iowan Old Style", Palatino, Georgia, serif; font-w
     border: 1px solid var(--line);
   }
   .times td { border: 0; padding: 0; }
-  .times td.day-cell, .times td.span-cell { grid-column: 1 / -1; }
+  .times td.day-cell, .times td.span-cell, .times td.wfh-cell { grid-column: 1 / -1; }
+  .times td.wfh-cell { display: flex; align-items: center; gap: 10px; }
   .times td.day-cell { font-weight: 600; }
   .day-word {
     display: inline;
@@ -298,6 +301,7 @@ h1.page-title { font-family: "Iowan Old Style", Palatino, Georgia, serif; font-w
     color: var(--muted);
   }
   .times td input { border: 1px solid var(--line); background: white; min-height: 44px; padding: 8px 10px; }
+  .times td.wfh-cell input[type="checkbox"] { width: 22px; height: 22px; min-height: 0; padding: 0; border: 0; background: transparent; }
   .times tr.proposed { background: var(--gold); }
   .times tr.proposed td { background: transparent; }
   .times tr.outside { background: #f7f1e6; }

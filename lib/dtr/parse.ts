@@ -235,7 +235,56 @@ export async function readDtr(bytes: Buffer, mime: string): Promise<DtrRead> {
   if (!header.name) throw new Error("Could not read the name above the time table.");
   if (!header.period) throw new Error("Could not read the cutoff period on this Daily Time Record.");
   const recognized = await readTable(prepared.canvas, prepared.image, cols, rows);
+  const right = tables[tables.length - 1];
+  const rightRows = right === cols ? rows : dayRows(prepared.image, right);
+  const marked = new Set(workFromHomeDays(prepared.image, right, rightRows.length >= 31 ? rightRows : rows));
+  for (const day of recognized) day.wfh = marked.has(day.day);
   return { name: header.name, period: header.period, recognized, warnings: [] };
+}
+
+/**
+ * Days whose row has a "WFH" mark in the margin to the right of this table.
+ * The mark is a short word, so a row counts only when that margin holds a
+ * compact patch of ink rather than a rule or a speck.
+ */
+export function workFromHomeDays(image: Rgba, cols: number[], rows: number[]): number[] {
+  const edge = cols[cols.length - 1];
+  if (edge == null || rows.length < 2) return [];
+  const gaps = rows.slice(1).map((row, index) => row - rows[index]).filter((gap) => gap > 18 && gap < 80);
+  const pitch = gaps.sort((a, b) => a - b)[Math.floor(gaps.length / 2)] ?? 40;
+  const x0 = Math.round(edge + Math.max(4, pitch * 0.18));
+  const x1 = Math.min(image.width - 1, Math.round(edge + pitch * 1.55));
+  if (x1 - x0 < 8) return [];
+  const dayCount = rows.length >= 33 ? 31 : Math.min(31, rows.length - 1);
+  const found: number[] = [];
+  for (let index = 0; index < dayCount; index += 1) {
+    const y0 = rows[index];
+    const y1 = rows[index + 1];
+    if (y1 == null) continue;
+    const top = Math.round(y0 + (y1 - y0) * 0.18);
+    const bottom = Math.round(y1 - (y1 - y0) * 0.18);
+    let dark = 0;
+    let left = x1;
+    let right = x0;
+    for (let y = top; y < bottom; y += 1) {
+      for (let x = x0; x < x1; x += 1) {
+        if (!isMark(image, x, y)) continue;
+        dark += 1;
+        if (x < left) left = x;
+        if (x > right) right = x;
+      }
+    }
+    const wide = right - left;
+    const area = Math.max(1, (bottom - top) * (x1 - x0));
+    if (dark >= Math.max(24, pitch * 0.8) && dark / area > 0.035 && wide > pitch * 0.35 && wide < pitch * 1.6) found.push(index + 1);
+  }
+  return found;
+}
+
+function isMark(image: Rgba, x: number, y: number) {
+  if (x < 0 || y < 0 || x >= image.width || y >= image.height) return false;
+  const index = (y * image.width + x) * 4;
+  return (image.data[index] + image.data[index + 1] + image.data[index + 2]) / 3 < 170;
 }
 
 export async function locateGrid(bytes: Buffer, mime: string) {

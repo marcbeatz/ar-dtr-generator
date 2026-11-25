@@ -90,7 +90,7 @@ export async function buildDtrPdf(
         if (!identity) continue;
         const dow = new Date(Date.UTC(period.year, period.month - 1, day)).getUTCDay();
         if (dow !== 0 && dow !== 6) continue;
-        after = { day, label: dow === 0 ? "Sunday" : "Saturday", amIn: "", amOut: "", pmIn: "", pmOut: "", keep: [] };
+        after = { day, label: dow === 0 ? "Sunday" : "Saturday", amIn: "", amOut: "", pmIn: "", pmOut: "", keep: [], wfh: false };
       }
       const suggested = proposed.get(day);
       if (!before || !after || !suggested) continue;
@@ -154,6 +154,8 @@ export async function buildDtrPdf(
     }
     if (identity) writeIdentity(pen, table.cols, table.rows, identity);
     if (headOfficer.trim()) signHead(pen, table.cols, table.rows, headOfficer.trim());
+    const next = located.tables[located.tables.indexOf(table) + 1];
+    stampWorkFromHome(pen, cols, rows, finalDays, next ? next.cols[0] + 0.5 : undefined);
   }
 
   await surface.finish();
@@ -235,6 +237,37 @@ function horizontalRules(image: Rgba, x0: number, x1: number, y0: number, y1: nu
     }
   }
   return found;
+}
+
+/** Draws or clears "WFH" in the right margin of each day, on every copy. */
+function stampWorkFromHome(pen: Pen, cols: number[], rows: number[], days: Map<number, DayRow>, limit?: number) {
+  const dayCount = rows.length >= 33 ? 31 : 30;
+  for (let index = 0; index < dayCount; index += 1) {
+    const y0 = rows[index];
+    const y1 = rows[index + 1];
+    if (y0 == null || y1 == null) continue;
+    markWorkFromHome(pen, cols[cols.length - 1], y0, y1, Boolean(days.get(index + 1)?.wfh), limit);
+  }
+}
+
+function markWorkFromHome(pen: Pen, edge: number, y0: number, y1: number, enabled: boolean, limit?: number) {
+  if (edge == null) return;
+  const pitch = y1 - y0;
+  const rule = (pen.style.line * pen.scale) / 2 + 1;
+  const left = edge + Math.max(rule, pitch * 0.1);
+  const stop = limit == null ? edge + pitch * 1.55 : Math.min(edge + pitch * 1.55, limit - 2);
+  if (stop - left < 4) return;
+  const top = y0 + pitch * 0.12;
+  const bottom = y1 - pitch * 0.18;
+  pen.surface.rect(left, top, stop, bottom, WHITE);
+  if (!enabled || stop - left < pitch * 0.4) return;
+  const text = "WFH";
+  let size = (0.341 * pitch) / FIGURE_HEIGHT;
+  const room = stop - left - pitch * 0.08;
+  while (size > 6 * pen.scale && pen.surface.width(text, size, false) > room) size *= 0.96;
+  const width = pen.surface.width(text, size, false);
+  const cx = Math.min(edge + pitch * 0.268 + width / 2, stop - width / 2 - 1);
+  pen.surface.text(text, cx, y0 + 0.536 * pitch, size, false, pen.style.ink);
 }
 
 function signHead(pen: Pen, cols: number[], rows: number[], name: string) {

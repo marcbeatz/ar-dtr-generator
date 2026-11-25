@@ -9,6 +9,8 @@ export type DayRow = {
   pmOut: string;
   /** Printed cells the reader could see but not transcribe. */
   keep: TimeField[];
+  /** Work-from-home mark printed to the right of this day. */
+  wfh: boolean;
 };
 
 export type Period = {
@@ -29,5 +31,5 @@ export type CustomRow = {
 export const TIME_FIELDS: TimeField[] = ["amIn", "amOut", "pmIn", "pmOut"];
 
 export function emptyDay(day: number): DayRow {
-  return { day, label: "", amIn: "", amOut: "", pmIn: "", pmOut: "", keep: [] };
+  return { day, label: "", amIn: "", amOut: "", pmIn: "", pmOut: "", keep: [], wfh: false };
 }
