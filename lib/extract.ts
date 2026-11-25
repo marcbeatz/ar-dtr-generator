@@ -1,5 +1,6 @@
 import { createCanvas, DOMMatrix, ImageData, Path2D, type Canvas } from "@napi-rs/canvas";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { createWorker, PSM, type Worker, type WorkerParams } from "tesseract.js";
 
 type PdfDocument = {
@@ -32,6 +33,12 @@ function patchDom() {
 
 export async function openPdf(data: Uint8Array): Promise<PdfDocument> {
   patchDom();
+  const workerSrc = pathToFileURL(
+    path.join(process.cwd(), "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"),
+  ).href;
+  // Registers WorkerMessageHandler on globalThis so pdfjs skips the relative
+  // worker import that fails when that file is missing from the deployment.
+  await import(/* webpackIgnore: true */ workerSrc);
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const doc = await pdfjs.getDocument({
     data,
