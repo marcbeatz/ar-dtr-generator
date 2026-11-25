@@ -63,15 +63,20 @@ export function DtrStudio() {
     setError("");
     const body = new FormData();
     body.set("file", next);
-    const response = await fetch("/api/dtr/parse", { method: "POST", body });
-    const json = await response.json();
-    setReading(false);
-    if (!response.ok) {
-      setError(json.error ?? "Could not read that file.");
-      return;
+    try {
+      const response = await fetch("/api/dtr/parse", { method: "POST", body });
+      const json = await response.json();
+      if (!response.ok) {
+        setError(json.error ?? "Could not read that file.");
+        return;
+      }
+      setFile(next);
+      setData({ name: json.name, period: json.period, recognized: json.recognized, days: json.days, rows: [] });
+    } catch {
+      setError("Could not read that file.");
+    } finally {
+      setReading(false);
     }
-    setFile(next);
-    setData({ name: json.name, period: json.period, recognized: json.recognized, days: json.days, rows: [] });
   }
 
   function updatePeriod(next: DateRange) {

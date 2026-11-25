@@ -2,10 +2,14 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["tesseract.js", "@napi-rs/canvas", "pdfjs-dist"],
-  // pdfjs imports its worker with a runtime-relative path, which the file
-  // tracer does not follow. Without this, the worker is missing on Vercel.
+  // These are loaded by a runtime path, which the file tracer does not follow.
+  // A missing pdf.js worker throws. A missing Tesseract wasm never resolves,
+  // so the upload stays on "Reading…".
   outputFileTracingIncludes: {
-    "/api/**": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"],
+    "/api/**": [
+      "./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
+      "./node_modules/tesseract.js-core/*.wasm",
+    ],
   },
 };
 

@@ -34,26 +34,32 @@ export function ArStudio() {
     setShots({});
     const body = new FormData();
     body.set("file", next);
-    const response = await fetch("/api/ar/parse", { method: "POST", body });
-    const json = await response.json();
-    setBusy(false);
-    if (!response.ok) {
+    try {
+      const response = await fetch("/api/ar/parse", { method: "POST", body });
+      const json = await response.json();
+      if (!response.ok) {
+        setSource(null);
+        setError(json.error ?? "Could not read that file.");
+        return;
+      }
+      setSource({
+        name: json.name ?? "",
+        position: json.position ?? "",
+        project: json.project ?? "",
+        bureau: json.bureau ?? "",
+        period: json.period ?? "",
+        notes: json.notes ?? "",
+        submittedName: json.submittedName ?? "",
+        submittedTitle: json.submittedTitle ?? "",
+        approvedName: json.approvedName ?? "",
+        approvedTitle: json.approvedTitle ?? "",
+      });
+    } catch {
       setSource(null);
-      setError(json.error ?? "Could not read that file.");
-      return;
+      setError("Could not read that file.");
+    } finally {
+      setBusy(false);
     }
-    setSource({
-      name: json.name ?? "",
-      position: json.position ?? "",
-      project: json.project ?? "",
-      bureau: json.bureau ?? "",
-      period: json.period ?? "",
-      notes: json.notes ?? "",
-      submittedName: json.submittedName ?? "",
-      submittedTitle: json.submittedTitle ?? "",
-      approvedName: json.approvedName ?? "",
-      approvedTitle: json.approvedTitle ?? "",
-    });
   }
 
   function setField(field: keyof Source, value: string) {
